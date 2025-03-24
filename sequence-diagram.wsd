@@ -1,0 +1,95 @@
+@startuml
+
+skinparam boxPadding 10
+skinparam ParticipantPadding 20
+skinparam Shadowing false
+
+box "👤 Cliente" #D0E7FF
+  actor Cliente
+end box
+
+box "🖥️ Sistema (Interface)" #E8E8E8
+  participant Sistema
+end box
+
+box "⚙️ Services" #F9F9F9
+  participant CadastroService
+  participant LocacaoService
+  participant PromocaoService
+  participant PagamentoService
+  participant MultaService
+end box
+
+Cliente -> Sistema : iniciarSolicitacaoLocacao(codCliente, categoriaDesejada)
+activate Sistema
+
+' --- Verificação de Cadastro ---
+Sistema -> CadastroService : buscarCadastro(codCliente)
+activate CadastroService
+alt Cadastro inexistente
+    CadastroService --> Sistema : null
+    deactivate CadastroService
+    Sistema -> Cliente : "Cadastro não encontrado. Faça o registro."
+    deactivate Sistema
+    return
+else Cadastro encontrado
+    CadastroService --> Sistema : dadosCliente
+    deactivate CadastroService
+end
+
+' --- Verificação de Pendências ---
+Sistema -> CadastroService : verificarLocacoesPendentes(codCliente)
+activate CadastroService
+alt Possui pendências
+    CadastroService --> Sistema : pendencias = true
+    deactivate CadastroService
+    Sistema -> Cliente : "Locações pendentes. Não é possível alugar."
+    deactivate Sistema
+    return
+else Sem pendências
+    CadastroService --> Sistema : pendencias = false
+    deactivate CadastroService
+end
+
+' --- Criação da Locação ---
+Sistema -> LocacaoService : criarLocacao(codCliente, categoria)
+activate LocacaoService
+LocacaoService --> Sistema : locacaoId
+deactivate LocacaoService
+
+' --- Aplicar Promoções ---
+Sistema -> PromocaoService : verificarPromocao(locacaoId)
+activate PromocaoService
+PromocaoService --> Sistema : desconto, upgrade
+deactivate PromocaoService
+
+' --- Processar Pagamento ---
+Sistema -> PagamentoService : calcularReserva(valor, desconto)
+Sistema -> Cliente : solicitarDadosPagamento()
+Cliente -> Sistema : enviarDadosPagamento()
+Sistema -> PagamentoService : processarPagamento(dados)
+activate PagamentoService
+alt Pagamento recusado
+    PagamentoService --> Sistema : status = "falha"
+    deactivate PagamentoService
+    Sistema -> Cliente : "Pagamento recusado"
+    deactivate Sistema
+    return
+else Pagamento aprovado
+    PagamentoService --> Sistema : status = "ok"
+    deactivate PagamentoService
+end
+
+' --- Verificar Multas ---
+Sistema -> MultaService : consultarMultas(veiculo)
+activate MultaService
+MultaService --> Sistema : listaMultas
+deactivate MultaService
+Sistema -> Cliente : notificarMultas(listaMultas)
+
+' --- Finalizar Locação ---
+Sistema -> LocacaoService : concluirLocacao(locacaoId, valorFinal)
+Sistema -> Cliente : locacaoConfirmada()
+
+deactivate Sistema
+@enduml
