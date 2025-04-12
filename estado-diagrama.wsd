@@ -1,0 +1,36 @@
+@startuml
+title Diagrama de Estados - Classe Locacao
+
+[*] --> AguardandoVerificacaoCadastro : Solicitar Locação
+
+state AguardandoVerificacaoCadastro as "Consultando Cadastro\n do / buscarCadastro()"
+AguardandoVerificacaoCadastro --> VerificandoPendencias : Cadastro encontrado
+
+state VerificandoPendencias as "Verificando Pendências\n do / verificarPendencias()"
+VerificandoPendencias --> CriandoLocacao : Sem pendências
+
+state CriandoLocacao as "Criando Locação\n do / criarLocacao()"
+CriandoLocacao --> CalculandoValorFinal : Verificando promoções
+
+state CalculandoValorFinal as "Calculando Valor Final\n do / calcularReserva()"
+CalculandoValorFinal --> ProcessandoPagamento : Enviar dados pagamento
+
+state ProcessandoPagamento as "Processando Pagamento\n do / processarPagamento()"
+ProcessandoPagamento --> PagamentoRecusado : status == "falha"
+PagamentoRecusado --> [*] : Locação Recusada
+
+ProcessandoPagamento --> ConsultandoMultas : status == "ok"
+
+state ConsultandoMultas as "Consultando Multas\n do / consultarMultas()"
+ConsultandoMultas --> NotificandoMultas : Multas encontradas
+
+state NotificandoMultas as "Notificando Cliente\n do / notificarMultas()"
+NotificandoMultas --> ConcluindoLocacao : Após notificação
+ConsultandoMultas --> ConcluindoLocacao : Sem multas
+
+state ConcluindoLocacao as "Concluindo Locação\n do / concluirLocacao()"
+ConcluindoLocacao --> [*] : Locação Finalizada com Sucesso
+
+state PagamentoRecusado as "Pagamento Recusado"
+
+@enduml
